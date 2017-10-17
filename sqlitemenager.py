@@ -1,19 +1,26 @@
 import sqlite3
 import subprocess 
 import random
+
 class SqliteMenager(object):
-	def __init__(self, db_file = None):
-		if not db_file or len(db_file)<4:
-			raise Exception("You must specify a correct name for the file")
+	def __init__(self, on_ram = False, db_file = None):
+		assert (isinstance(on_ram,(bool))),"'on_ram' must be either True o False"
+		if on_ram:
+			self.db_name = None #does't have a name, its just in memory
+			self.db = sqlite3.connect(':memory:')
+			self.db_cur = self.db.cursor()
+		else:
 
-		if db_file[-3:] != '.db':
-			db_file += '.db'
+			assert (db_file and len(db_file)>4),"You must specify a correct name for the db file"
 
-		self.db = db_file
-		self.cur = sqlite3.connect(db_file).cursor()
+			if db_file[-3:] != '.db':
+				db_file += '.db'
 
+			self.db_name = db_file
+			self.db = sqlite3.connect(db_file)
+			self.db_cur = self.db.cursor()
 
-	def check_tbl_struct(self,tbl):
+	def is_legal_table(self,tbl):
 		"""
 		this method check is the TBL parameter represent or not actually a table  
 		correct if = 
