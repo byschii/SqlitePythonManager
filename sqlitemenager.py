@@ -1,24 +1,32 @@
 import sqlite3
 import subprocess 
-import random
 
 class SqliteMenager(object):
-	def __init__(self, on_ram = False, db_file = None):
-		assert (isinstance(on_ram,(bool))),"'on_ram' must be either True o False"
-		if on_ram:
-			self.db_name = None #does't have a name, its just in memory
-			self.db = sqlite3.connect(':memory:')
-			self.db_cur = self.db.cursor()
+	def __init__(self, db_location = None):
+		assert (db_location and len(db_location)>4),"You must specify a correct name for the db file"
+
+		if db_location == ':memory:':
+			self.in_ram = True
+			self.db_name = 'tmp_memory_db.db'
+			
 		else:
+			if db_location[-3:] != '.db':
+				db_location += '.db'
 
-			assert (db_file and len(db_file)>4),"You must specify a correct name for the db file"
+			self.db_name = db_location
+			self.in_ram = False
 
-			if db_file[-3:] != '.db':
-				db_file += '.db'
+		self.db = sqlite3.connect(self.db_name)
+		self.db_cur = self.db.cursor()
 
-			self.db_name = db_file
-			self.db = sqlite3.connect(db_file)
-			self.db_cur = self.db.cursor()
+	def __del__(self):
+		"""
+		this methos is called when you DEL the object and AT EXIT
+		it only delete the file that stores temporanelay the db on memory 
+		"""
+		if self.in_ram:
+			subprocess.call('rm '+self.db_name, shell = True)
+
 
 	def is_legal_table(self,tbl):
 		"""
@@ -52,13 +60,13 @@ class SqliteMenager(object):
 		the name, the type, and other details
 		"""
 
-		tables = subprocess.check_output('sqlite3 '+self.db+' .tables', shell=True)
+		tables = subprocess.check_output('sqlite3 '+self.db_name+' .tables', shell=True)
 		tables = tables.split()#nomi delle tabelle
 
 		t = []
 
 		for tbl in tables:
-			s = (subprocess.check_output('sqlite3 '+self.db+' ".schema '+tbl+'"', shell=True)).split()[2:]
+			s = (subprocess.check_output('sqlite3 '+self.db_name+' ".schema '+tbl+'"', shell=True)).split()[2:]
 			s = ' '.join( s )
 			s = s[:-1]
 			t.append( s )
@@ -91,7 +99,13 @@ class SqliteMenager(object):
 		for r in ris:
 			stringa += 'insert into '+tbl_name+' values ('
 			for v in r:
-				stringa += 
+				if isinstance(v,(unicode)):
+					v = v.encode("utf-8")
+
+				stringa += (str(v)+',')
+
+			stringa = stringa[:-1] + ')'
+
 
 		for t in zip(tbl,xrange(len(tbl))):
 			content[t[0][0]] = [r[t[1]] for r in ris]
@@ -108,22 +122,21 @@ class SqliteMenager(object):
 
 
 if __name__ == '__main__':
-	man = SqliteMenager('test')
+	db_menager = SqliteMenager(':memory:')
+	import time
+	time.sleep(4)
+	del db_menager
 
 
+	
 
 
-
-
-
-
-
-
-
-
-
-
-
+	'''
+	per fate tutte le op sulla memory
+	basta che lo apro cmq su file
+	e che mi salvo il fatto che dovrebbe essere su memoria
+	e quindi alla chiusuta cancello il file
+	'''
 
 
 
