@@ -80,15 +80,15 @@ class SqliteMenager(object):
 		tables = t
 		t = []
 
-		for name,rows in tables:
+		for name,coll in tables:
 			name = name.strip()
 
-			rows = map(lambda x: x[1:] if x[0] == ' ' else x,rows)
-			rows = map(lambda x: x[:-1] if x[-1] == ' ' else x,rows)
+			coll = map(lambda x: x[1:] if x[0] == ' ' else x,coll)
+			coll = map(lambda x: x[:-1] if x[-1] == ' ' else x,coll)
 
-			rows = map(lambda x: [x.split()[0] , x.split()[1] , x.split(x.split()[1])[1][1:]] , rows)
+			coll = map(lambda x: [x.split()[0] , x.split()[1] , x.split(x.split()[1])[1][1:]] , coll)
 
-			t.append([name,rows])
+			t.append([name,coll])
 
 		tables = t
 		
@@ -97,20 +97,28 @@ class SqliteMenager(object):
 
 
 	
-	def test_tbl_content(self, name = None, as_ = None):
-		raise Exception("NOT TO USE!!")
+	def tbl_content(self, name = None, as_ = tuple()):
+		"""
+		this function returns the content of a table in three different way:
+		as a tuple: the simplest way, a bit tuple rappresenting the table and smaller ones representing each row 
+		as a dict: the keys are the the names of the columns, the value of each key is a list with every values that appears in the the column, ordered
+					(of course, the keys aren t ordered)
+		as a string: the string is the same query that you would use to insert the data to reproduce it
+		"""
+		
 		if not name:
 			raise Exception("you must specify the name of the table")
 		
-		tbl = filter(lambda x: x[0] == name, self.db_full_schema())
-		tbl = tbl[0][1] # lista delle colonne della tablella
-		content = {}
 		ris = self.db_cur.execute('select * from '+name).fetchall()
 
-
+		if isinstance(as_,(tuple)):
+			return tuple(ris)
 
 			
 		if isinstance(as_,(dict)):
+			tbl = filter(lambda x: x[0] == name, self.db_full_schema())
+			tbl = tbl[0][1] # lista delle colonne della tablella
+			content = {}
 			for col,indx in zip(tbl,xrange(len(tbl))):
 				content[col[0]] = [r[indx] for r in ris]
 
@@ -141,8 +149,9 @@ if __name__ == '__main__':
 	db_menager = SqliteMenager('cat_s_secrets')
 
 	print '--E--N--D--'
-	for t in db_menager.db_full_schema():
-		print t
+	x = db_menager.db_full_schema()
+	for y in x:
+		print db_menager.is_legal_table(y)
 	del db_menager
 
 
