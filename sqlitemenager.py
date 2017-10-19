@@ -1,5 +1,6 @@
 import sqlite3
-import subprocess 
+import subprocess
+
 
 class SqliteMenager(object):
 	def __init__(self, db_location = None):
@@ -25,7 +26,7 @@ class SqliteMenager(object):
 		it only delete the file that stores temporanelay the db on memory 
 		"""
 		if self.in_ram:
-			subprocess.call('rm '+self.db_name, shell = True)
+			subprocess.check_call('rm '+self.db_name, shell = True)
 
 
 	def is_legal_table(self,tbl):
@@ -35,15 +36,15 @@ class SqliteMenager(object):
 		list('name', list_columns( list_column('name','type','other') ))
 		"""
 
-		if not isinstance(tbl,(list)):
+		if not isinstance(tbl,(list)):#each table is a list
 			return False
 		else:
-			if isinstance(tbl[0], (str)) and isinstance(tbl[1], (list)):
-				for c in tbl[1]:
-					if not isinstance(c,(list)):
+			if isinstance(tbl[0], (str)) and isinstance(tbl[1], (list)): # with a name(str), and some columns(list)
+				for c in tbl[1]:#each column
+					if not isinstance(c,(list)): # has to be a list
 						return False
 					else:
-						if not isinstance(c[0],(str)) or not isinstance(c[1],(str)) or not isinstance(c[2],(str)):
+						if not isinstance(c[0],(str)) or not isinstance(c[1],(str)) or not isinstance(c[2],(str)): # containing exactly 3 strings
 							return False
 			else: 
 				return False
@@ -69,13 +70,15 @@ class SqliteMenager(object):
 			s = (subprocess.check_output('sqlite3 '+self.db_name+' ".schema '+tbl+'"', shell=True)).split()[2:]
 			s = ' '.join( s )
 			s = s[:-1]
-			t.append( s )
+			t.append( s ) # riempio t con tutti i dati delle tabelle nel db
 
 		tables = []
 
 		for x in t:
 			x = x[:-1]
-			tb,dt = x.split('(')
+			brach_index = x.find('(')
+			dt , tb = x[brach_index:][:-1] , x[:brach_index][:-1] #nel primo metto nome tbl nel secondo i dati
+
 			tb = tb.strip()
 			dt = dt.split(',')
 			f = []
@@ -93,18 +96,18 @@ class SqliteMenager(object):
 		tbl = filter(lambda x: x[0] == tbl_name, self.db_full_schema())
 		tbl = tbl[0][1]
 		content = {}
-		ris = self.cur.execute('select * from '+tbl_name).fetchall()
+		ris = self.db_cur.execute('select * from '+tbl_name).fetchall()
 
 		stringa = ''
 		for r in ris:
 			stringa += 'insert into '+tbl_name+' values ('
 			for v in r:
 				if isinstance(v,(unicode)):
-					v = v.encode("utf-8")
+					v = "\'"+v.encode("utf-8")+"\'"
 
 				stringa += (str(v)+',')
 
-			stringa = stringa[:-1] + ')'
+			stringa = stringa[:-1] + ');'
 
 
 		for t in zip(tbl,xrange(len(tbl))):
@@ -122,25 +125,16 @@ class SqliteMenager(object):
 
 
 if __name__ == '__main__':
-	db_menager = SqliteMenager(':memory:')
-	import time
-	time.sleep(4)
+	from placeholder import build
+
+	build()
+	db_menager = SqliteMenager('cat_s_secrets')
+
+	print db_menager.tbl_content('cat',True)
 	del db_menager
 
 
 	
-
-
-	'''
-	per fate tutte le op sulla memory
-	basta che lo apro cmq su file
-	e che mi salvo il fatto che dovrebbe essere su memoria
-	e quindi alla chiusuta cancello il file
-	'''
-
-
-
-
 
 
 
