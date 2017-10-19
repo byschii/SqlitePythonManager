@@ -25,7 +25,7 @@ class SqliteMenager(object):
 		this methos is called when you DEL the object and AT EXIT
 		it only delete the file that stores temporanelay the db on memory 
 		"""
-		if self.in_ram:
+		if self.in_ram or self.db_name == 'cat_s_secrets.db':
 			subprocess.check_call('rm '+self.db_name, shell = True)
 
 
@@ -51,7 +51,7 @@ class SqliteMenager(object):
 	
 		return True
 
-	def db_full_schema(self):
+	def db_full_schema(self, as_string= False):
 		"""
 		this function returns a main list that contains other lists
 		each 'sub-list' represent a table -> each 'table' contains 3 elements
@@ -61,63 +61,73 @@ class SqliteMenager(object):
 		the name, the type, and other details
 		"""
 
-		tables = subprocess.check_output('sqlite3 '+self.db_name+' .tables', shell=True)
-		tables = tables.split()#nomi delle tabelle
+		tables = subprocess.check_output('sqlite3 '+self.db_name+' .schema', shell=True)
+		if as_string:
+			return tables
+
+		tables = tables.split('\n')[:-1]#nomi delle tabelle
+
 
 		t = []
 
-		for tbl in tables:
-			s = (subprocess.check_output('sqlite3 '+self.db_name+' ".schema '+tbl+'"', shell=True)).split()[2:]
-			s = ' '.join( s )
-			s = s[:-1]
-			t.append( s ) # riempio t con tutti i dati delle tabelle nel db
-
-		tables = []
-
-		for x in t:
+		for x in tables:
 			x = x[:-1]
-			brach_index = x.find('(')
-			dt , tb = x[brach_index:][:-1] , x[:brach_index][:-1] #nel primo metto nome tbl nel secondo i dati
+			split_index = x.find('(')
+			x = [ x[:split_index].split()[2] , x[split_index+1:][:-1].split(',') ]
 
-			tb = tb.strip()
-			dt = dt.split(',')
-			f = []
-			for g in dt:
-				g = g.split()
-				f.append([g[0], g[1], ' '.join(g[2:]) ])
-			tables.append( [tb,f] )
+			t.append(x)
 
+		tables = t
+		t = []
+
+		for name,rows in tables:
+			name = name.strip()
+
+			rows = map(lambda x: x[1:] if x[0] == ' ' else x,rows)
+			rows = map(lambda x: x[:-1] if x[-1] == ' ' else x,rows)
+
+			rows = map(lambda x: [x.split()[0] , x.split()[1] , x.split(x.split()[1])[1][1:]] , rows)
+
+			t.append([name,rows])
+
+		tables = t
+		
 		return tables
 
-	def tbl_content(self, tbl_name = None, as_string = False):
-		if not tbl_name:
+
+
+	
+	def test_tbl_content(self, name = None, as_ = None):
+		raise Exception("NOT TO USE!!")
+		if not name:
 			raise Exception("you must specify the name of the table")
 		
-		tbl = filter(lambda x: x[0] == tbl_name, self.db_full_schema())
-		tbl = tbl[0][1]
+		tbl = filter(lambda x: x[0] == name, self.db_full_schema())
+		tbl = tbl[0][1] # lista delle colonne della tablella
 		content = {}
-		ris = self.db_cur.execute('select * from '+tbl_name).fetchall()
-
-		stringa = ''
-		for r in ris:
-			stringa += 'insert into '+tbl_name+' values ('
-			for v in r:
-				if isinstance(v,(unicode)):
-					v = "\'"+v.encode("utf-8")+"\'"
-
-				stringa += (str(v)+',')
-
-			stringa = stringa[:-1] + ');'
+		ris = self.db_cur.execute('select * from '+name).fetchall()
 
 
-		for t in zip(tbl,xrange(len(tbl))):
-			content[t[0][0]] = [r[t[1]] for r in ris]
-		
-		if not as_string:
+
+			
+		if isinstance(as_,(dict)):
+			for col,indx in zip(tbl,xrange(len(tbl))):
+				content[col[0]] = [r[indx] for r in ris]
+
 			return content
-		else:
-			return stringa
 
+
+		if isinstance(as_,(str)):
+			stringa = ''
+			for r in ris:
+				stringa += 'insert into '+name+' values ('
+				for v in r:
+					if isinstance(v,(unicode)):
+						v = "\'"+v.encode("utf-8")+"\'"
+					stringa += (str(v)+',')
+				stringa = stringa[:-1] + ');'
+			return stringa
+	
 
 
 
@@ -130,7 +140,9 @@ if __name__ == '__main__':
 	build()
 	db_menager = SqliteMenager('cat_s_secrets')
 
-	print db_menager.tbl_content('cat',True)
+	print '--E--N--D--'
+	for t in db_menager.db_full_schema():
+		print t
 	del db_menager
 
 
